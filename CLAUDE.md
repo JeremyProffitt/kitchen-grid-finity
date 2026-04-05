@@ -4,14 +4,135 @@
 
 This repository contains OpenSCAD designs for Gridfinity-compatible drawer inserts for kitchen organization. The designs follow the Gridfinity standard (42mm grid pitch, stackable bases) and are intended for 3D printing, optimized for the Bambu Labs H2D printer.
 
-### Gridfinity Standard Reference
+### Gridfinity Specification Reference
 
-- **Grid pitch**: 42mm x 42mm per unit
-- **Base height**: 5mm (standard baseplate)
-- **Stacking lip**: 2.6mm height, designed for secure stacking
-- **Base magnet holes**: 6.5mm diameter, 2.4mm deep (optional)
-- **Corner radius**: 3.75mm on outer edges
-- **Clearance**: 0.5mm between bins and baseplate
+Sources: [gridfinity.xyz/specification](https://gridfinity.xyz/specification/), [kennetek/gridfinity-rebuilt-openscad](https://github.com/kennetek/gridfinity-rebuilt-openscad), [ostat/gridfinity_extended_openscad](https://github.com/ostat/gridfinity_extended_openscad), [vector76/gridfinity_openscad](https://github.com/vector76/gridfinity_openscad)
+
+#### Core Grid Dimensions
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Grid pitch | **42mm x 42mm** | Center-to-center spacing of each grid unit |
+| Z pitch (height unit) | **7mm** | One Gridfinity height unit (U) |
+| Bin outer size | **41.5mm** | `pitch - clearance` = 42 - 0.5 |
+| Grid clearance | **0.5mm** | Gap between bin outer wall and grid cell |
+| Corner radius | **3.75mm** | Outer corner rounding radius on bin body |
+| Taper angle | **45 degrees** | All bevels are at 45 degrees |
+
+#### Base Profile (Stepped Bottom of Bins)
+
+The base profile is the 2D cross-section swept around rounded corners that creates the male stacking feature on the bottom of every bin. It is defined as a polyline:
+
+```
+              2.95
+         |<--------->|
+         |           |
+   4.75  +           / --- bevel 2: 2.15mm at 45° (width: 2.15, height: 2.15)
+    ^    |          /
+    |    |         |  --- vertical riser: 1.8mm tall
+    |    |         |
+    |    |          \ --- bevel 1: 0.8mm at 45° (width: 0.8, height: 0.8)
+    v    +----------+ --- z = 0 (bottom)
+```
+
+| Segment | Start [X,Z] | End [X,Z] | Description |
+|---------|-------------|-----------|-------------|
+| Bottom point | [0, 0] | [0.8, 0.8] | 45° bevel, 0.8mm |
+| Vertical riser | [0.8, 0.8] | [0.8, 2.6] | Straight up, 1.8mm |
+| Upper bevel | [0.8, 2.6] | [2.95, 4.75] | 45° bevel, 2.15mm |
+
+**Derived values:**
+- Total profile width (X): **2.95mm**
+- Total profile height (Z): **4.75mm**
+- Base bottom corner radius: `3.75 - 2.95 = 0.8mm`
+- Total base height: **7mm** (profile 4.75mm + bridge 2.25mm tying units together)
+
+#### Baseplate Profile (Female Socket)
+
+The baseplate profile is nearly identical to the base profile but **0.1mm smaller on the first bevel**, creating the sliding fit clearance:
+
+| Segment | Base (male) | Baseplate (female) | Clearance |
+|---------|------------|-------------------|-----------|
+| Bevel 1 | [0.8, 0.8] | [0.7, 0.7] | **0.1mm** |
+| Riser top | [0.8, 2.6] | [0.7, 2.5] | 0.1mm |
+| Bevel 2 top | [2.95, 4.75] | [2.85, 4.65] | 0.1mm |
+
+Baseplate height: **4.75mm** (profile only), **5mm** minimum with clearance floor.
+
+#### Stacking Lip (Top Edge of Bins)
+
+The stacking lip is the interlocking feature at the top of bins that allows stacking:
+
+```
+    \        upper taper: 1.9mm at 45°
+     |       vertical riser: 1.8mm
+      \      lower taper: 0.7mm at 45°
+       |     support wall: 1.2mm
+      /      support taper (fills to wall)
+     /
+    /
+```
+
+| Segment | Start [X,Z] | End [X,Z] | Description |
+|---------|-------------|-----------|-------------|
+| Inner tip | [0, 0] | [0.7, 0.7] | 45° lower taper |
+| Riser | [0.7, 0.7] | [0.7, 2.5] | Vertical, 1.8mm |
+| Upper taper | [0.7, 2.5] | [2.6, 4.4] | 45° upper taper |
+
+**Derived values:**
+- Nominal lip size: **2.6mm deep x 4.4mm tall**
+- Fillet radius at outer tip: **0.6mm** (replaces sharp point)
+- Actual lip height with fillet: **~3.55mm** (no impact on stacking)
+- Support wall height below lip: **1.2mm**
+
+#### Magnet & Screw Holes
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Magnet diameter | **6mm** (hole: **6.5mm**) | 0.5mm clearance |
+| Magnet thickness | **2mm** (hole depth: **2.4mm**) | +2 layer heights (0.2mm each) |
+| Screw type | **M3** | |
+| Screw hole diameter | **3.0mm** | |
+| Screw hole depth | **6.0mm** | |
+| Hole center from bin edge | **4.8mm** | From bottom outer edge of base |
+| Hole center from cell center | **13.0mm** | `min(pitch/2 - 8, pitch/2 - 4 - magnet_od/2)` |
+| Crush rib count | **8** | For press-fit magnet retention |
+| Crush rib inner radius | **2.95mm** (5.9mm diameter) | |
+
+#### Wall & Compartment Dimensions
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Minimum wall thickness | **0.95mm** | For bins < 6U tall |
+| Medium wall thickness | **1.2mm** | For bins 6-12U tall |
+| Heavy wall thickness | **1.6mm** | For bins >= 12U tall |
+| Divider wall thickness | **1.2mm** | Between compartments |
+| Internal fillet radius | **2.8mm** | Compartment corner rounding |
+| Cup floor thickness | **0.7mm** | Minimum floor above base |
+
+#### Weighted Baseplate Cutouts
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Bottom part height | **6.4mm** | Weighted section depth |
+| Square cutout size | **21.4mm x 21.4mm** | Center weight pocket |
+| Square cutout depth | **4.0mm** | |
+| Rounded cutout width | **8.5mm** | |
+| Rounded cutout length | **4.25mm** | |
+| Rounded cutout depth | **2.0mm** | |
+
+#### Height System
+
+```
+Total bin height = (num_z * 7mm) + stacking_lip_height
+
+Standard heights:
+  1U =  7mm +  lip =  ~10.55mm
+  2U = 14mm +  lip =  ~17.55mm
+  3U = 21mm +  lip =  ~24.55mm
+  6U = 42mm +  lip =  ~45.55mm
+  10U = 70mm + lip =  ~73.55mm (common kitchen drawer height)
+```
 
 ---
 
@@ -103,20 +224,75 @@ All measurements must be defined as named constants at the top of the file. **Ne
 
 #### Gridfinity Standard Constants
 
-Every file that uses Gridfinity dimensions must define the standard constants:
+Every file that uses Gridfinity dimensions must include the full standard constants. These are derived from the official specification and community implementations. **Do not modify these values.**
 
 ```openscad
 // ===========================================
 // GRIDFINITY STANDARD DIMENSIONS (do not modify)
 // ===========================================
 
-grid_pitch_mm         = 42;     // Standard Gridfinity grid unit size
-grid_clearance_mm     = 0.5;    // Clearance between bin and baseplate
-base_height_mm        = 5;      // Standard baseplate height
-stacking_lip_height_mm = 2.6;   // Height of stacking lip
-corner_radius_mm      = 3.75;   // Standard corner radius
-magnet_hole_diameter_mm = 6.5;  // Magnet hole diameter (optional)
-magnet_hole_depth_mm  = 2.4;    // Magnet hole depth (optional)
+// --- Core Grid ---
+grid_pitch_mm           = 42;       // Grid unit size (center-to-center)
+grid_zpitch_mm          = 7;        // Height unit size (1U = 7mm)
+grid_clearance_mm       = 0.5;      // Bin-to-baseplate clearance per side
+grid_outer_size_mm      = 41.5;     // Bin outer size (pitch - clearance)
+grid_taper_angle        = 45;       // All bevels at 45 degrees
+
+// --- Corner Geometry ---
+corner_radius_mm        = 3.75;     // Outer corner radius
+base_bottom_radius_mm   = 0.8;     // Bottom corner radius (corner_radius - profile_width)
+
+// --- Base Profile (male, stepped bottom of bins) ---
+base_bevel1_mm          = 0.8;      // First bevel: 0.8mm at 45°
+base_riser_mm           = 1.8;      // Vertical riser height
+base_bevel2_mm          = 2.15;     // Second bevel: 2.15mm at 45°
+base_profile_width_mm   = 2.95;     // Total profile X extent (0.8 + 0 + 2.15)
+base_profile_height_mm  = 4.75;     // Total profile Z extent (0.8 + 1.8 + 2.15)
+base_total_height_mm    = 7;        // Profile + bridge (4.75 + 2.25)
+base_bridge_height_mm   = 2.25;     // Flat section tying base units together
+
+// --- Baseplate Profile (female, 0.1mm smaller for clearance) ---
+bp_bevel1_mm            = 0.7;      // First bevel: 0.7mm at 45°
+bp_riser_mm             = 1.8;      // Vertical riser height
+bp_bevel2_mm            = 2.15;     // Second bevel: 2.15mm at 45°
+bp_profile_width_mm     = 2.85;     // Total profile X extent
+bp_profile_height_mm    = 4.65;     // Total profile Z extent
+bp_min_height_mm        = 5;        // Minimum baseplate height
+
+// --- Stacking Lip (top edge of bins) ---
+lip_lower_taper_mm      = 0.7;      // Lower 45° taper
+lip_riser_mm            = 1.8;      // Vertical riser
+lip_upper_taper_mm      = 1.9;      // Upper 45° taper
+lip_depth_mm            = 2.6;      // Total lip depth (X)
+lip_nominal_height_mm   = 4.4;      // Nominal height (Z)
+lip_fillet_radius_mm    = 0.6;      // Fillet at outer tip
+lip_actual_height_mm    = 3.55;     // Actual height with fillet
+lip_support_height_mm   = 1.2;      // Support wall below lip
+
+// --- Magnet & Screw Holes ---
+magnet_diameter_mm      = 6;        // Physical magnet diameter
+magnet_hole_diameter_mm = 6.5;      // Hole diameter (with clearance)
+magnet_thickness_mm     = 2;        // Physical magnet thickness
+magnet_hole_depth_mm    = 2.4;      // Hole depth (magnet + 2 layer heights)
+screw_diameter_mm       = 3;        // M3 screw
+screw_hole_depth_mm     = 6;        // Screw hole depth
+hole_from_edge_mm       = 4.8;      // Hole center from base outer edge
+hole_from_center_mm     = 13;       // Hole center from cell center
+
+// --- Walls & Compartments ---
+wall_thin_mm            = 0.95;     // Minimum wall thickness (bins < 6U)
+wall_medium_mm          = 1.2;      // Medium wall thickness (bins 6-12U)
+wall_thick_mm           = 1.6;      // Heavy wall thickness (bins >= 12U)
+divider_thickness_mm    = 1.2;      // Internal divider wall thickness
+internal_fillet_mm      = 2.8;      // Compartment corner fillet radius
+cup_floor_thickness_mm  = 0.7;      // Minimum floor above base
+
+// --- Pad Corner Position ---
+pad_corner_position_mm  = 17;       // pitch/2 - 4 (MUST be 17 for compatibility)
+
+// --- Manufacturing ---
+layer_height_mm         = 0.2;      // Default FDM layer height
+tolerance_mm            = 0.02;     // Cut overlap / anti-z-fighting
 ```
 
 #### Naming Convention
@@ -526,7 +702,391 @@ Generated files should never be committed to the repository - they are produced 
 
 ---
 
-## 5. Kitchen Drawer Insert Design Guidelines
+## 5. Gridfinity OpenSCAD Patterns & Techniques
+
+Reference implementations: [kennetek/gridfinity-rebuilt-openscad](https://github.com/kennetek/gridfinity-rebuilt-openscad) (MIT), [ostat/gridfinity_extended_openscad](https://github.com/ostat/gridfinity_extended_openscad) (GPL-3.0), [vector76/gridfinity_openscad](https://github.com/vector76/gridfinity_openscad) (MIT).
+
+### 5.1 Base Profile Construction
+
+The base profile is the heart of Gridfinity compatibility. Two approaches are used in the community:
+
+#### Approach A: Sweep a 2D polygon around rounded rectangle (kennetek)
+
+```openscad
+// Define the base profile as a 2D polygon
+BASE_PROFILE = [
+    [0, 0],                                         // Bottom point
+    [base_bevel1_mm, base_bevel1_mm],               // [0.8, 0.8]
+    [base_bevel1_mm, base_bevel1_mm + base_riser_mm], // [0.8, 2.6]
+    [base_profile_width_mm, base_profile_height_mm]  // [2.95, 4.75]
+];
+
+// Sweep the profile around a rounded rectangular path
+module sweep_rounded(inner_size) {
+    // inner_size = inner rectangle dimensions [x, y]
+    // Children must be a 2D shape in Quadrant 1
+    // Generates 4 straight segments (linear_extrude) + 4 corners (rotate_extrude)
+
+    for (i = [0:3]) {
+        rotate([0, 0, 90*i])
+        translate([inner_size.x/2, -inner_size.y/2, 0]) {
+            // Straight segment along each edge
+            rotate([90, 0, 90])
+                linear_extrude(height = inner_size[i%2 == 0 ? 1 : 0])
+                    children();
+            // Quarter-turn corner
+            rotate_extrude(angle = 90)
+                children();
+        }
+    }
+}
+
+// Use: sweep_rounded(inner_dims) base_profile_polygon();
+```
+
+#### Approach B: Hull over corner cylinders at varying heights (vector76/ostat)
+
+```openscad
+// Build profile from hulled cylinder stacks at pad corners
+module pad_oversize(num_x, num_y, margins=0) {
+    pad_corner = pad_corner_position_mm;  // 17mm from cell center
+    radialgap = margins * 0.25;           // 0.25mm clearance for female parts
+
+    // Bottom bevel: hull two cylinder stacks
+    hull() {
+        cornercopy(pad_corner, num_x, num_y)
+            cylinder(d=1.6 + radialgap*2, h=0.1, $fn=32);       // z=0
+        cornercopy(pad_corner, num_x, num_y)
+            cylinder(d=3.2 + radialgap*2, h=1.9, $fn=32);       // z=0 to 1.9 (bevel1_top=0.8, extends to 0.8+1.1)
+    }
+
+    // Upper bevel: hull two cylinder stacks
+    hull() {
+        cornercopy(pad_corner, num_x, num_y)
+            translate([0,0,2.6])
+                cylinder(d=3.2 + radialgap*2, h=0.1, $fn=32);   // z=2.6
+        cornercopy(pad_corner, num_x, num_y)
+            translate([0,0,5.0])
+                cylinder(d=8.2 + radialgap*2, h=0.2, $fn=32);   // z=5.0 (with bonus)
+    }
+}
+
+// Helper: place children at all 4 corners
+module cornercopy(r, num_x=1, num_y=1) {
+    for (xi=[0:num_x-1], yi=[0:num_y-1])
+        for (xx=[-1,1], yy=[-1,1])
+            translate([xx*r + xi*grid_pitch_mm, yy*r + yi*grid_pitch_mm, 0])
+                children();
+}
+```
+
+### 5.2 Stacking Lip Construction
+
+```openscad
+// Stacking lip profile (2D, for sweeping around bin top edge)
+STACKING_LIP_PROFILE = [
+    [0, 0],                                                // Inner tip
+    [lip_lower_taper_mm, lip_lower_taper_mm],              // [0.7, 0.7]
+    [lip_lower_taper_mm, lip_lower_taper_mm + lip_riser_mm], // [0.7, 2.5]
+    [lip_depth_mm, lip_nominal_height_mm]                   // [2.6, 4.4]
+];
+
+// The lip includes a support section below to connect to the bin wall:
+//   support_height = lip_support_height_mm + tan(45) * lip_depth_mm
+//                  = 1.2 + 2.6 = 3.8mm
+
+// Lip styles (from ostat):
+//   "normal"          - Full lip for standard stacking
+//   "reduced"         - Shorter lip for low-profile bins (< 1.8U)
+//   "reduced_double"  - Double-reduced for very low bins
+//   "minimum"         - Minimal lip
+//   "none"            - No lip (auto-selected when < 1.2U)
+```
+
+### 5.3 Grid Copy & Iteration Patterns
+
+```openscad
+// Place children at each cell in a grid
+module gridcopy(num_x, num_y) {
+    for (xi = [0:num_x-1], yi = [0:num_y-1])
+        translate([xi * grid_pitch_mm, yi * grid_pitch_mm, 0])
+            children();
+}
+
+// Place children at all 4 corners of a rectangle
+module cornercopy(r, num_x=1, num_y=1) {
+    for (xx = [-1, 1], yy = [-1, 1])
+        translate([xx * r, yy * r, 0])
+            children();
+}
+
+// Combine grid + corner iteration for magnet/screw holes
+module gridcopycorners(num_x, num_y, r, only_outer=false) {
+    for (xi = [0:num_x-1], yi = [0:num_y-1])
+        for (xx = [-1, 1], yy = [-1, 1])
+            if (!only_outer || (xi==0 && xx==-1) || (xi==num_x-1 && xx==1)
+                            || (yi==0 && yy==-1) || (yi==num_y-1 && yy==1))
+                translate([xi*grid_pitch_mm + xx*r, yi*grid_pitch_mm + yy*r, 0])
+                    children();
+}
+```
+
+### 5.4 Bin Construction Pattern (Additive then Subtractive)
+
+```openscad
+// The standard bin construction follows this pattern:
+//
+// 1. Create solid block with base pads and outer hull
+// 2. Subtract stacking socket from top (reuse pad_oversize with margins)
+// 3. Subtract magnet/screw holes from base
+// 4. Subtract interior cavity (compartments, dividers)
+//
+// bin = grid_block - stacking_cutout - holes - cavity + dividers
+
+module basic_cup(num_x, num_y, num_z, ...) {
+    difference() {
+        // Positive: solid block with base pads
+        grid_block(num_x, num_y, num_z);
+
+        // Negative: interior cavity with lip
+        translate([0, 0, base_total_height_mm])
+            partitioned_cavity(num_x, num_y, num_z, divx, divy);
+    }
+}
+
+module grid_block(num_x, num_y, num_z) {
+    total_ht = num_z * grid_zpitch_mm + lip_actual_height_mm;
+
+    union() {
+        // Outer shell: rounded rectangle extruded to full height
+        linear_extrude(total_ht)
+            rounded_square([num_x * grid_pitch_mm - grid_clearance_mm,
+                           num_y * grid_pitch_mm - grid_clearance_mm],
+                          corner_radius_mm, center=true);
+
+        // Base pads at each grid position
+        gridcopy(num_x, num_y)
+            pad_oversize(1, 1, margins=0);
+    }
+
+    // Subtract stacking socket from top
+    difference() {
+        children();
+        translate([0, 0, total_ht - base_profile_height_mm])
+            gridcopy(num_x, num_y)
+                pad_oversize(1, 1, margins=1);  // 0.25mm clearance
+    }
+}
+```
+
+### 5.5 Compartment & Divider Pattern
+
+```openscad
+// Subdivide bin interior into compartments
+module partitioned_cavity(num_x, num_y, num_z, divx, divy) {
+    cavity_width  = num_x * grid_pitch_mm - grid_clearance_mm - 2*wall_thin_mm;
+    cavity_depth  = num_y * grid_pitch_mm - grid_clearance_mm - 2*wall_thin_mm;
+    cavity_height = num_z * grid_zpitch_mm;
+
+    difference() {
+        // Full cavity
+        translate([wall_thin_mm, wall_thin_mm, 0])
+            rounded_cube([cavity_width, cavity_depth, cavity_height],
+                        internal_fillet_mm);
+
+        // Divider walls (X direction)
+        if (divx > 1)
+            for (i = [1:divx-1])
+                translate([wall_thin_mm + i * cavity_width/divx - divider_thickness_mm/2,
+                          wall_thin_mm, 0])
+                    cube([divider_thickness_mm, cavity_depth, cavity_height]);
+
+        // Divider walls (Y direction)
+        if (divy > 1)
+            for (i = [1:divy-1])
+                translate([wall_thin_mm,
+                          wall_thin_mm + i * cavity_depth/divy - divider_thickness_mm/2, 0])
+                    cube([cavity_width, divider_thickness_mm, cavity_height]);
+    }
+}
+```
+
+### 5.6 Overhang Remedy (Supportless Printing)
+
+For magnet/screw holes, use bridging layers so FDM printers can print without supports:
+
+```openscad
+// Sequential bridging: alternating rectangular bridges narrow from outer to inner diameter
+module make_hole_printable(inner_r, outer_r, layers=2) {
+    for (i = [0:layers-1]) {
+        bridge_r = outer_r - i * (outer_r - inner_r) / layers;
+        rotate([0, 0, 90 * i])  // Alternate 90° for each layer
+            translate([0, 0, i * layer_height_mm])
+                cube([bridge_r * 2, outer_r * 2, layer_height_mm], center=true);
+    }
+}
+
+// Alternative: single thin bridge at magnet-to-screw transition
+module overhang_fix(magnet_r, screw_r) {
+    translate([0, 0, -0.001])
+        render()
+        intersection() {
+            cube([screw_r*2 + 0.1, magnet_r*2 + 0.1, 0.3], center=true);
+            cylinder(r=magnet_r, h=0.3, center=true, $fn=32);
+        }
+}
+```
+
+### 5.7 Efficient Floor (Material-Saving)
+
+```openscad
+// Creates a non-flat floor that follows pad contours to save material
+// Only usable when no magnets/screws/finger-slides are present
+module efficient_floor(num_x, num_y) {
+    gridcopy(num_x, num_y) {
+        hull() {
+            // Bottom: small spheres at pad corners
+            translate([0, 0, cup_floor_thickness_mm])
+                cornercopy(pad_corner_position_mm)
+                    sphere(r=1, $fn=16);
+            // Top: full-size corner cylinders
+            translate([0, 0, base_profile_height_mm])
+                cornercopy(pad_corner_position_mm)
+                    cylinder(r=corner_radius_mm, h=4, $fn=32);
+        }
+    }
+}
+```
+
+### 5.8 Label Tab Pattern
+
+```openscad
+// Label overhang on bin wall for label strips
+tab_depth_mm    = 15.85;
+tab_angle       = 36;        // degrees
+tab_support_mm  = 1.2;
+tab_height_mm   = tan(tab_angle) * tab_depth_mm + tab_support_mm;  // ~12.72mm
+
+// Tab polygon (2D cross-section, extruded across bin width)
+TAB_POLYGON = [
+    [0, 0],
+    [0, tab_height_mm],
+    [tab_depth_mm, tab_height_mm],
+    [tab_depth_mm, tab_height_mm - tab_support_mm]
+];
+```
+
+### 5.9 Finger Slide / Scoop
+
+```openscad
+// Scoop cutout on front wall for easy item retrieval
+module finger_slide(width, depth, height) {
+    facets = 13;
+    pivot = [0, depth, height];
+    for (i = [0:facets-1]) {
+        angle = 90 * i / (facets - 1);
+        rotate([0, 0, 0])
+            translate(pivot)
+                rotate([angle, 0, 0])
+                    translate(-pivot)
+                        cube([width, depth, height]);
+    }
+}
+```
+
+### 5.10 OpenSCAD Customizer Integration
+
+Use section comments and inline type hints for the OpenSCAD Customizer GUI:
+
+```openscad
+/* [Grid Size] */
+bin_width_gu = 2;        // Grid units wide (X)
+bin_depth_gu = 3;        // Grid units deep (Y)
+bin_height_u = 6;        // Height units (1U = 7mm)
+
+/* [Compartments] */
+dividers_x = 1;          // Number of X dividers
+dividers_y = 2;          // Number of Y dividers
+
+/* [Features] */
+include_magnets = false;  // Add magnet holes
+include_screws = false;   // Add screw holes
+include_lip = true;       // Add stacking lip
+scoop_percent = 0; //[0:5:100]  // Finger scoop depth (%)
+label_style = "none"; //[none, full, left, center, right]
+
+/* [Advanced] */
+wall_thickness_mm = 0.95; //0.05  // Step size 0.05mm
+
+// Sentinel to hide internal code from Customizer
+module end_of_customizer_opts() {}
+```
+
+### 5.11 Rounded Shape Helpers
+
+```openscad
+// Rounded square (2D) - used extensively for bin cross-sections
+module rounded_square(size, radius, center=false) {
+    offset(r=radius)
+        offset(r=-radius)
+            square(size, center=center);
+}
+
+// Rounded cube (3D) - for compartment cutouts with filleted corners
+module rounded_cube(size, radius) {
+    hull() {
+        for (x = [radius, size.x - radius])
+            for (y = [radius, size.y - radius])
+                translate([x, y, 0])
+                    cylinder(r=radius, h=size.z, $fn=32);
+    }
+}
+
+// Shorthand translate
+module tz(z) { translate([0, 0, z]) children(); }
+```
+
+### 5.12 Wall Patterns (Advanced, from ostat)
+
+Available wall/floor decorative patterns:
+- `hexgrid` - Hexagonal grid cutouts
+- `grid` - Rectangular grid cutouts
+- `voronoi` - Voronoi tessellation
+- `brick` / `brickoffset` - Brick-like patterns
+- `slats` - Horizontal/vertical slat cutouts
+
+These are created by generating a 2D pattern, then using `linear_extrude` + `intersection` with the wall surface.
+
+### 5.13 File Organization Pattern
+
+Recommended project structure following community conventions:
+
+```
+kitchen-grid-finity/
+├── CLAUDE.md                          # This file
+├── README.md                          # Project overview with images
+├── .gitignore
+├── build.sh / build.bat               # Build scripts
+├── src/
+│   ├── gridfinity_constants.scad      # All standard constants (shared)
+│   ├── gridfinity_base.scad           # Base profile module (shared)
+│   ├── gridfinity_lip.scad            # Stacking lip module (shared)
+│   ├── gridfinity_helpers.scad        # Utility modules (shared)
+│   └── gridfinity_baseplate.scad      # Baseplate module (shared)
+├── cutlery_tray.scad                  # Top-level designs (customizer-ready)
+├── cutlery_tray.md
+├── utensil_bin.scad
+├── utensil_bin.md
+├── spice_rack.scad
+├── spice_rack.md
+└── baseplate.scad
+```
+
+Each top-level `.scad` file should `include` the shared modules from `src/`.
+
+---
+
+## 6. Kitchen Drawer Insert Design Guidelines
 
 ### Measuring Drawers
 
@@ -535,25 +1095,45 @@ Before designing inserts, measure and document:
 - **Interior depth** (mm) - front to back
 - **Interior height** (mm) - bottom to top of drawer sides
 - **Number of baseplates needed** to cover the drawer floor
+- **Drawer slide clearance** - any obstructions from slides or hardware
+
+Calculate grid coverage: `floor(width / 42) x floor(depth / 42)` grid units, then decide on baseplate oversize method (`crop`, `fill`, or `outer`).
 
 ### Common Kitchen Insert Types
 
 Design inserts for common kitchen organization needs:
-- **Cutlery tray**: Divided compartments for forks, knives, spoons, etc.
-- **Utensil bin**: Tall bins for spatulas, whisks, tongs
-- **Spice rack**: Sized for standard spice jars
-- **Knife block**: Slotted insert for knife blade storage
-- **Wrap/foil organizer**: Tall narrow bins for rolls
-- **Lid organizer**: Vertical slots for pot/pan lids
-- **Junk drawer**: Mixed small-item organizer with varied compartment sizes
+
+| Insert Type | Typical Grid Size | Height (U) | Notes |
+|-------------|-------------------|------------|-------|
+| Cutlery tray | 1x4 per slot | 3-4U | Forks, knives, spoons |
+| Utensil bin | 2x2 or 2x3 | 8-10U | Spatulas, whisks, tongs |
+| Spice rack | 1x1 per jar | 4-6U | Standard spice jars (~42mm dia) |
+| Knife block | 2x3 | 6-8U | Slotted for blade storage |
+| Wrap/foil holder | 1x2 | 8-10U | Tall narrow for rolls |
+| Lid organizer | 3x2 | 6-8U | Vertical slots for pot/pan lids |
+| K-cup holder | 1x1 per cup | 3U | Single-serve coffee pods |
+| Junk drawer | mixed | 3-4U | Varied compartment sizes |
 
 ### Gridfinity Baseplate
 
-Include a baseplate design that can be tiled to cover any drawer floor. The baseplate anchors all bins in place.
+Include a baseplate design that can be tiled to cover any drawer floor. The baseplate anchors all bins in place. Options:
+- **Plain baseplate**: Just the socket profile, minimal height (5mm)
+- **Weighted baseplate**: Heavier base with weight pockets (keeps baseplate from sliding)
+- **Screw-down baseplate**: Mounting holes for permanent installation
+- **Magnetic baseplate**: Magnet holes in all corners for bin retention
+
+### Kitchen-Specific Design Considerations
+
+- **Food safety**: Use PETG or food-safe PLA; avoid PLA near heat sources
+- **Washability**: Rounded internal corners (use `internal_fillet_mm = 2.8`) for easy cleaning
+- **Drainage**: Consider adding small drain holes in bins that may get wet
+- **Label tabs**: Include label overhangs on bins for easy identification
+- **Finger scoops**: Add scoop cutouts on front walls for easy item retrieval
+- **No magnets needed**: Kitchen drawers typically don't need magnet retention (friction from baseplate is sufficient)
 
 ---
 
-## 6. Workflow Summary
+## 7. Workflow Summary
 
 1. **Measure**: Document target drawer dimensions
 2. **Plan**: Determine grid layout and which inserts to create
@@ -565,7 +1145,7 @@ Include a baseplate design that can be tiled to cover any drawer floor. The base
 
 ---
 
-## 7. Quick Reference: Required Updates Checklist
+## 8. Quick Reference: Required Updates Checklist
 
 When creating or modifying a `.scad` file:
 
