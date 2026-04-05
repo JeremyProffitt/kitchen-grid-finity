@@ -1,0 +1,7 @@
+# Generated build artifacts
+build/
+*.stl
+*.png
+
+# Exception: Keep source images if any exist in assets/
+!assets/*.png
